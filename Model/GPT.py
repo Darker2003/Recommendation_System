@@ -2,7 +2,7 @@ import json
 
 from openai import OpenAI
 
-from config import *
+from .config import *
 
 client = OpenAI()
 
@@ -18,9 +18,10 @@ def GPT(question):
     )
     tags = []
     for tag in json.loads(response.choices[0].message.content)['entities']:
+        tag[1] = tag[1].replace(" ", "_")
         tags.append(tag[1])
     print(tags)
-    return " ".join(tags)
+    return [" ".join(tags)]
 
 if __name__ ==  '__main__':
     GPT(question)

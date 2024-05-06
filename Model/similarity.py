@@ -1,45 +1,44 @@
-from torch.nn.functional import cosine_similarity
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-from config import *
-from GPT import GPT
+from .config import *
+from .GPT import GPT
 
 phobert = AutoModel.from_pretrained(phobert_model_name)
 tokenizer = AutoTokenizer.from_pretrained(phobert_model_name)
 
-def similarity():
-    global phobert, tokenizer, places_data_path, question
+def similarity(question):
     """
     This function is used to calculate the similarity between question tags and places tags
     and sort them in descending order
     """
     #Get the tags of places and question
-    place_tags = get_place_tags(places_data_path)
     question_tags = GPT(question)
     
     #Tokenize and encode
-    question_tags_tokenize = tokenizer.encode(question_tags, max_length=MAX_LENGTH, padding='max_length', truncation=True)
-    place_tags_tokenize = [tokenizer.encode(tag, max_length=MAX_LENGTH, padding='max_length', truncation=True) for tag in place_tags]
-    tags_tokenize = torch.tensor([question_tags_tokenize] + place_tags_tokenize)
+    result = suggest_destination(question_tags, top_n=top_n)
     
     # Extract features using PhoBERT
-    with torch.no_grad():
-        features = phobert(tags_tokenize)[0].squeeze(0) # Models outputs are now tuples
     
-    # Calculate cosine similarity between questio and each place
-    consine_similarity_score = cosine_similarity(features[0:1], features[1:], dim=-1)
-    
-    # Zip the similarity scores with the place
-    similarity_score = list(zip(consine_similarity_score.squeeze().tolist(), place_tags))
-    
-    # Sort the pairs based on the similarity scores in descending order
-    similarity_score_sorted = sorted(similarity_score, key=lambda x: x[0], reverse=True)
-    place_tags_sorted = [tag[1] for tag in similarity_score_sorted]
-    
-    return place_tags_sorted
+    return result
+
+def suggest_destination(question_tags, top_n = 5):
+    '''
+    input: tags is extracted from the question. Ex: question_tags = ['ĐỊA_ĐIỂM DU_LỊCH BIỂN SAN_HÔ BƠI_LỘI CÁT ĐÁ VUI_CHƠI TRẺ_EM']
+           data of the destination: destination_1.xlsx
+    output: top 5 relevant destination according to the tags 
+            return DataFrame contain 'name', 'description','image' and 'simi_score'
+    '''
+    destinations = pd.read_excel(places_data_path)
+    vectorizer = CountVectorizer(max_features=10000, stop_words="english")
+    tags_vector = vectorizer.fit_transform(destinations["tags"].values.astype('U')).toarray()
+    question_vector = vectorizer.transform(question_tags).toarray()
+    similarity_matrix = cosine_similarity(tags_vector, question_vector)
+    destinations['simi_score'] = similarity_matrix
+    destinations = destinations.sort_values(by ='simi_score', ascending=False)
+    result = destinations.iloc[:top_n,:]
+    return list(result["name"])
 
 if __name__ == "__main__":
     # Print the sorted sentences
-    print("Sorted sentences based on cosine similarity to sentence_root:")
-    # print(similarity())
-    for i, sentence in enumerate(similarity()):
-        print(f"{i+1}. {sentence}")
+    print(similarity(question))

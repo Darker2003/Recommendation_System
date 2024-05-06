@@ -10,16 +10,17 @@ from transformers import AutoModel, AutoTokenizer
 DEFAULT_TEXT_ANNOTATION_FILE = "Datasets/Query/datasets_text.json"
 
 #Set the GPT API Key
-# os.environ["OPENAI_API_KEY"] = ""
+# os.environ["OPENAI_API_KEY"] = 
 gpt_model_name = "gpt-3.5-turbo"
 prompt_path = "Datasets/Prompt/prompt.json"
 
 #Question
-question = {"role": "user", "content": "đi du_lịch ở đâu tắm biển leo núi"}
+question = {"role": "user", "content": "Tôi muốn đi cắm trại ngắm bình minh cùng gia đình trên biển"}
 
 #Calculate similarity
 MAX_LENGTH = 200
 places_data_path = "Datasets/Places/destination_1.xlsx"
+top_n = 5 #top n highest score suggestion
 phobert_model_name = "vinai/phobert-base-v2"
 
 
@@ -39,8 +40,8 @@ def GPT_prompt(prompt_path):
     return json_data
 
 # Clear and Get tags of place
-def get_place_tags(places_data_path):
-    place_tags = pd.read_excel(places_data_path)
-    place_tags = list(place_tags['tags'])
-    place_tags = [re.sub(r',', '', string) for string in place_tags]
-    return  place_tags
+# def get_place_tags(places_data_path):
+#     place_tags = pd.read_excel(places_data_path)
+#     place_tags = list(place_tags['tags'])
+#     place_tags = [re.sub(r',', '', string) for string in place_tags]
+#     return  place_tags
