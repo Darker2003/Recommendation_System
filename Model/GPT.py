@@ -21,7 +21,7 @@ def GPT(question):
         tag[1] = tag[1].replace(" ", "_")
         tags.append(tag[1])
     print(tags)
-    return [" ".join(tags)]
+    return [", ".join(tags)]
 
 if __name__ ==  '__main__':
     GPT(question)
