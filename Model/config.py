@@ -10,6 +10,7 @@ from transformers import AutoModel, AutoTokenizer
 DEFAULT_TEXT_ANNOTATION_FILE = "Datasets/Query/datasets_text.json"
 
 #Set the GPT API Key
+
 gpt_model_name = "gpt-3.5-turbo"
 prompt_path = "Datasets/Prompt/prompt.json"
 
