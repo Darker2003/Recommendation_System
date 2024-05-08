@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!-<![endif]-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>{{ signup_webtitle }}</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="{% static 'css/login.css' %}">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Manrope">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Open+Sans">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Merriweather">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    </head>
+    <body id="grad">
+        <img id="pagelogo" src="{% static 'image/logo_white.svg' %}">
+        <form id='loginpanel' action="{% url 'signup_register' %}" method="POST">
+        {% csrf_token %}
+            <h3>{{ lang.signup_title }}</h3>
+            {{ signupform.signup_email }}
+            {{ signupform.signup_username }}
+            {{ signupform.signup_fullname }}
+            <select class="customselect" id="signup_salary" name="signup_salary">
+                <option value="0" disabled selected hidden>Select your salary</option>
+                {% for value, label in signupform.signup_salary.field.choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select class="customselect" id="signup_job" name="signup_job">
+                <option value="0" disabled selected hidden>Select your job</option>
+                {% for value, label in signupform.signup_job.field.choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            {{ signupform.signup_phone }}
+            {{ signupform.signup_password }}
+            {{ signupform.signup_repassword }}
+            <div id="rememberme">
+                {{ signupform.agree_terms }}
+                <label for="agreeterms">{{ lang.acceptterm_text }}</label>
+            </div>
+            <div id="buttonline">
+                <button type="submit" value="Submit">{{ lang.signupbutton_text }}</button>
+                <a href="{% url 'homepage' %}">
+                    <button type="button">{{ lang.returnbutton_text }}</button>
+                </a>
+            </div>
+            {% for field_errors in signupform.errors.values %}
+                {% for error in field_errors %}
+                    <p id="errormsg">{{ error|escape }}</p>
+                {% endfor %}
+            {% endfor %}
+            <p>{{ lang.alreadyhasaccount_text }}</p>
+        </form>
+    </body>

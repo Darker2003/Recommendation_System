@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!-<![endif]-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>{{ lang.homepage_webtitle }}</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="{% static 'css/index.css' %}">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Manrope">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Open+Sans">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Merriweather">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+        <header id="infoheader" class="flexhorizontal">
+            <div>
+                <img id="pagelogo" src="{% static 'image/logo.svg' %}">
+            </div>
+            <div>
+                <p>{{ lang.homepage_tagline }}</p>
+            </div>
+        </header>
+        <header id="homepageheader">
+            <div class="flexhorizontal">
+                <div class="flexhorizontal" id="leftpartheader">
+                    <button class="homepagebutton">{{ lang.aboutheader_text }}</button>
+                    <button class="homepagebutton">{{ lang.contactheader_text }}</button>
+                </div>
+                <div class="flexhorizontal" id="rightpartheader">
+                    <p>{{ lang.greeting_text }} 
+                        {% if user.is_authenticated %}
+                            {{ user.username }}
+                        {% else %}
+                            {{ lang.default_user_name }}
+                        {% endif %}
+                    </p>
+                    {% if user.is_authenticated %}
+                        <button class="homepagebutton" onclick="window.location.href = '{% url 'log_out' %}'"><span class="material-icons">login</span> {{ lang.logout_text }}</button>
+                        <button class="homepagebutton" onclick="window.location.href = '{% url 'profile' %}'"><span class="material-icons">person</span> {{ lang.profile_text }}</button>
+                    {% else %}
+                        <button class="homepagebutton" onclick="window.location.href = '{% url 'log_in' %}'"><span class="material-icons">login</span> {{ lang.login_text }}</button>
+                        <button class="homepagebutton" onclick="window.location.href = '{% url 'signup' %}'"><span class="material-icons">person</span> {{ lang.signup_text }}</button>
+                    {% endif %}
+                    <button class="homepagebutton" onclick="window.location.href = '#searchsection'"><span class="material-icons">search</span> {{ lang.searchbutton_text }}</button>
+                </div>
+            </div>
+        </header>
+        <section id="detailsection">
+            <div id="detailcontainer">
+                <div id="detailgrid">
+                    <div id="detailcontent">
+                        <div id="detaillocation">
+                            <h2 style="color: #2a5686;">{{ loc_detail.place_name }}</h2>
+                            <h3>{{ loc_detail.address }}</h3>
+                            <h3>{{ loc_detail.ratings }}★</h3>
+                            <h3>Price {{ loc_detail.price }}$ - Avaliablity: {{ loc_detail.availability }}</h3>
+                            <button class="ticketbutton">PLACE A TICKET</button>
+                            <a href="{{ request.META.HTTP_REFERER }}#searchsection" style="width: 100%;">
+                                <button class="ticketbutton">RETURN</button>
+                            </a>
+                            <h3 style="padding-top: 1rem; text-align: left;">{{ loc_detail.place_desc }}</h3>
+                        </div>
+                    </div>
+                    <div style="background-image: url('/media/{{ loc_detail.image }}')" id="detailimage"></div>
+                </div>
+            </div>
+        </section>
+        <script src="{% static 'js/index.js' %}" async defer></script>
+    </body>
+</html>

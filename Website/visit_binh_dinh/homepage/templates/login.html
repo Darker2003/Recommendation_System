@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!-<![endif]-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>{{ login_webtitle }}</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="{% static 'css/login.css' %}">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Manrope">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Open+Sans">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Merriweather">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    </head>
+    <body id="grad">
+        <img id="pagelogo" src="{% static 'image/logo_white.svg' %}">
+        <form id='loginpanel' action="{% url 'log_in_check' %}" method="post">
+        {% csrf_token %}
+            <h3>{{ lang.login_title }}</h3>
+            {{ loginform.login_email }}
+            {{ loginform.login_password }}
+            <div id='forgotline'>
+                <div id="rememberme">
+                    {{ loginform.check_remember }}
+                    <label for="checkremember">{{ lang.rememberme_text }}</label>
+                </div>
+                <p>{{ lang.forgotpassword_text }}</p>
+            </div>
+            <div id="buttonline">
+                <button type="submit" value="Submit">{{ lang.confirmbutton_text }}</button>
+                <a href="{% url 'homepage' %}">
+                    <button type="button">{{ lang.returnbutton_text }}</button>
+                </a>
+            </div>
+            {% for field_errors in loginform.errors.values %}
+                {% for error in field_errors %}
+                    <p id="errormsg">{{ error|escape }}</p>
+                {% endfor %}
+            {% endfor %}
+            <p>{{ lang.noaccount_text }}</p>
+        </form>
+    </body>
