@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import locationdatabase, userdatabase, commentreview
+from .models import locationdatabase, userdatabase, userlocationlogging, usersearchlogging
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 from django.contrib.auth.admin import UserAdmin
 
@@ -29,4 +29,5 @@ class CustomUserAdmin(UserAdmin):
 # Register your models here.
 admin.site.register(locationdatabase)
 admin.site.register(userdatabase, CustomUserAdmin)
-admin.site.register(commentreview)
+admin.site.register(userlocationlogging)
+admin.site.register(usersearchlogging)

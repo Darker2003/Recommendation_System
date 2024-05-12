@@ -83,6 +83,19 @@ class userdatabase(AbstractBaseUser, PermissionsMixin):
         # Override check_password method to check against the legacy password field
         return check_password(raw_password, self.password)
     
+class userlocationlogging(models.Model):
+    log_id = models.BigAutoField(primary_key=True)
+    username = models.ForeignKey('userdatabase', on_delete=models.CASCADE, null=True)
+    clicked_location = models.ForeignKey('locationdatabase', on_delete=models.CASCADE)
+    clicked_date = models.DateTimeField(auto_now_add=True)
+    
+class usersearchlogging(models.Model):
+    log_id = models.BigAutoField(primary_key=True)
+    username = models.ForeignKey('userdatabase', on_delete=models.CASCADE, null=True)
+    search_query = models.TextField()
+    result_query = models.TextField(null=True)
+    search_date = models.DateTimeField(auto_now_add=True)
+    
 class commentreview(models.Model):
     comment_id = models.BigAutoField(primary_key=True)
     content = models.ForeignKey('locationdatabase', on_delete=models.CASCADE)
@@ -92,16 +105,3 @@ class commentreview(models.Model):
     
     def __str__(self):
         return f"{self.comment_id}.{self.user}"
-    
-class userlocationlogging(models.Model):
-    log_id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('userdatabase', on_delete=models.CASCADE)
-    clicked_location = models.ForeignKey('locationdatabase', on_delete=models.CASCADE)
-    clicked_date = models.DateTimeField(auto_now_add=True)
-    
-class usersearchlogging(models.Model):
-    log_id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('userdatabase', on_delete=models.CASCADE)
-    search_query = models.TextField()
-    result_query = models.TextField(null=True)
-    search_date = models.DateTimeField(auto_now_add=True)

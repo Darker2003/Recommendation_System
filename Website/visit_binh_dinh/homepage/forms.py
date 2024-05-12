@@ -184,3 +184,54 @@ class SearchForm(forms.Form):
         min_length="2",
         required=True,
         widget=forms.TextInput(attrs={"placeholder": "Search query here.", 'id':"searchbar"}))
+    
+def extract_unique_tags(file_path):
+    unique_tags = set()  # Using a set to automatically ensure uniqueness
+    
+    # Open the file
+    with open(file_path, 'r', encoding='utf-8') as file:
+        # Iterate through each line in the file
+        for line in file:
+            # Split the line into tags based on spaces
+            tags = line.strip().split()  # No need to specify the separator as split() splits on whitespace by default
+            # Add each tag to the set
+            unique_tags.update(tags)
+            result = [tag.replace('_', ' ').title() for tag in unique_tags]
+    return result
+
+class FilterForm(forms.Form):
+    tags_file_path = 'homepage/lang/en_US/tags.txt'  # Replace with the path to your tags file
+    
+    search_input = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={"class": "smallsearchbar", "placeholder": "Search query here."})
+    )
+    
+    date_input = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date", "id": "birthday", "name": "birthday"})
+    )
+
+    tag_search = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={"class": "smallsearchbar", "placeholder": "Search tags"})
+    )
+
+    tagslist = forms.MultipleChoiceField(
+        choices=[],  # This will be populated dynamically
+        required=False
+    )
+
+    def __init__(self, *args, tagslist=extract_unique_tags(tags_file_path), **kwargs):
+        super(FilterForm, self).__init__(*args, **kwargs)
+        self.fields['tagslist'].choices = [(tag, tag) for tag in tagslist]
+        
+    def render_tagslist(self):
+        tags_html = ''
+        for tag_value, tag_label in self.fields['tagslist'].choices:
+            tags_html += f'''
+                <div class="locationcontainer">
+                    <input type="checkbox" id="{tag_value}" class="tag" name="tagslist" value="{tag_value}">
+                    <label for="{tag_value}" class="locationtagtext">{tag_label}</label>
+                </div>
+            '''
+        return tags_html

@@ -1,45 +1,78 @@
 from django.urls import reverse
 from django.shortcuts import render, redirect
-from .forms import LoginForm, SignupForm, ProfileForm, SearchForm
-from .models import locationdatabase, userdatabase, usersearchlogging
+from .forms import LoginForm, SignupForm, ProfileForm, SearchForm, FilterForm
+from .models import locationdatabase, userdatabase, usersearchlogging, userlocationlogging
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.db.models import Count, OuterRef, Subquery, IntegerField
+from django.db.models.functions import Coalesce
 
 import json 
 import math
 import requests
+import datetime
 
 # Create your views here.
-def extract_unique_tags(file_path):
-    unique_tags = set()  # Using a set to automatically ensure uniqueness
+def check_weather_basic():
+    current_date = datetime.datetime.now()
+    current_month = current_date.month
+    return 4 <= current_month <= 9
+
+def check_weather_api():
+    return "Save money."
+    # api_key = "DlGC49EZHwwBd6yuPPh3aMLedE5h9BT5"
+    # location_id = "171"
+    # date = ""
     
-    # Open the file
-    with open(file_path, 'r', encoding='utf-8') as file:
-        # Iterate through each line in the file
-        for line in file:
-            # Split the line into tags based on spaces
-            tags = line.strip().split()  # No need to specify the separator as split() splits on whitespace by default
-            # Add each tag to the set
-            unique_tags.update(tags)
-            result = [tag.replace('_', ' ').title() for tag in unique_tags]
-    return result
+    # weather_url = f"https://dataservice.accuweather.com/currentconditions/v1/{location_id}/{date}?apikey={api_key}"
+    
+    # response = requests.get(weather_url, timeout=3)
+    # result = response.json()
+    
+    # if response.ok:
+    #     if result:
+    #         weather_text = result[0]["WeatherText"]
+           
+    #         if weather_text == "Sunny":
+    #             return "Good weather!"
+    #         else:
+    #             return "We would not recommend going in this bad weather."
+    #     else:
+    #         return "Service couldn't response." 
+    # else:
+    #     if check_weather_basic() is True:
+    #         return "Good weather!"
+    #     else:
+    #         return "We would not recommend going in this bad weather."
 
 def homepage(request, view_amount: int=12, page: int=1):
     context = {}
+    
     with open('homepage/lang/en_US/index.json', encoding='utf-8') as lang_file:
         context['lang'] = json.load(lang_file)
     
-    location_list = locationdatabase.objects.all().values()
+    location_list = locationdatabase.objects.all().values().annotate(
+        click_count=Coalesce(
+            Subquery(
+                userlocationlogging.objects.filter(
+                    clicked_location=OuterRef('pk')
+                ).values('clicked_location').annotate(
+                    click_count=Count('clicked_location')
+                ).values('click_count')[:1]
+            ), 
+            0, 
+            output_field=IntegerField()
+        )
+    ).order_by('-click_count')
+    
     context['locationlist'] = location_list[(page-1)*view_amount:page*view_amount]
     
     page_amount = math.ceil(len(location_list)/view_amount)
     context['details'] = [number for number in range(1, page_amount+1)]
-    
-    tags_file_path = 'homepage/lang/en_US/tags.txt'  # Replace with the path to your tags file
-    unique_tags = extract_unique_tags(tags_file_path)
-    context['tagslist'] = unique_tags
-    
+
     context["searchform"] = SearchForm
+    context["filterform"] = FilterForm
+    context["weather"] = check_weather_api()
     
     return render(request, 'index.html', context)
 
@@ -165,6 +198,14 @@ def location_detail(request, slug):
         
     loc_detail = locationdatabase.objects.get(slug=slug)
     context['loc_detail'] = loc_detail
+    context['tag_string'] = " ".join(["#" + "".join(tag.lower().split("_")) for tag in loc_detail.tags.split(" ")])
+    
+    locationLogging = userlocationlogging()
+    
+    if request.user.is_authenticated:
+        locationLogging.username = userdatabase.objects.get(username=request.user.username)
+        locationLogging.clicked_location = loc_detail
+        locationLogging.save()
     
     return render(request, 'detailpage.html', context)
 
@@ -176,46 +217,49 @@ def search_request(request):
         form = SearchForm(request.POST)
         if form.is_valid():
             question = form.cleaned_data['search_input']
-            url = "http://192.168.1.38:8000/{}".format(question)
+            url = "http://192.168.1.8:8000/{}".format(question)
             
             try:
-                response = requests.get(url, timeout=3)
+                response = requests.get(url, timeout=5)
             except requests.exceptions.Timeout as e:
                 messages.error(request, "Error: " + "Connection Timeout") 
                 return redirect(reverse('homepage'))
-            else:
-                if response.ok:
-                    data = response.json()["result"]
-                    fetch_list = []
+            
+            if response.status_code == 200:
+                data = response.json()["result"]
+                fetch_list = []
+                
+                for name in data:
+                    try:
+                        fetch_list.append(locationdatabase.objects.get(place_name__iexact=name))
+                    except Exception as e:
+                        pass
                     
-                    for name in data:
-                        try:
-                            fetch_list.append(locationdatabase.objects.get(place_name__iexact=name))
-                        except Exception as e:
-                            pass
-                        
-                    if not fetch_list:
-                        messages.error(request,  "Error: " + "Unable able to find locations based on question.")
-                        return redirect(reverse('homepage'))
-                else:
-                    messages.error(request,  "Error: " + response.status_code + response.text)
+                if not fetch_list:
+                    messages.error(request,  "Error: Unable able to find locations based on question.")
                     return redirect(reverse('homepage'))
+                
+                messages.error(request, "Success!")
+                 
+            else:
+                messages.error(request,  "Error: " + str(response.status_code) + " " + response.text)
+                return redirect(reverse('homepage'))
     
     with open('homepage/lang/en_US/index.json', encoding='utf-8') as lang_file:
         context['lang'] = json.load(lang_file)
-        
+    
+    context["searchform"] = SearchForm
+    context["filterform"] = FilterForm
     context["locationlist"] = fetch_list
+    context["weather"] = check_weather_api()
     
     searchLogging = usersearchlogging()
     
     if request.user.is_authenticated:
-        searchLogging.user = request.user.username
-    else:
-        searchLogging.user = "a_user"
-        
-    searchLogging.search_query = question
-    searchLogging.result_query = fetch_list
-    searchLogging.save()
+        searchLogging.username = userdatabase.objects.get(username=request.user.username)
+        searchLogging.search_query = question
+        searchLogging.result_query = fetch_list
+        searchLogging.save()
     
     return render(request, 'index.html', context)
     

@@ -108,7 +108,10 @@
                             <div class="cardinfo">
                                 <h5 style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">{{ locationinfo.tags }}
                                 <h3 style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">{{ locationinfo.place_name }}</h3>
-                                <h5>{{ locationinfo.ratings }}★</h5>
+                                <div style="display: flex; flex-direction: row; justify-content: space-between;">
+                                    <h5>{{ locationinfo.ratings }}★</h5>
+                                    <h5>Views: {{ locationinfo.click_count }}</h5>
+                                </div>
                                 <a href="{% url 'location_detail' slug=locationinfo.slug  %}">
                                     <button class="morebutton">MORE INFO</button>
                                 </a>
@@ -119,38 +122,30 @@
                         </div>
                         {% endfor %}
                     </div>
-                    <div id="searchpage">
+                    <div id="searchpage" style="padding-top: 20px;">
                         {% for pagenumber in details %}
                             <a href="{% url 'homepage_page' page=pagenumber %}#searchsection" >{{ pagenumber }}</a>
                         {% endfor %}
-                    </div>
+                    </div>                 
                 </div>
-                <div id="filterpanel">
-                    <p id="filtertitle">{{ lang.searchbutton_text }}</p>
-                    <input class="smallsearchbar" type="text" placeholder="{{ smallsearchbar_placeholder }}"></input>
-                    <button id="filterbutton">{{ lang.searchbutton_text }}</button>
-                    <p id="filtertitle">{{ lang.filterlocation_text }}</p>
-                    <p id="filtersubtitle">{{ lang.filterlocation_subtext }}</p>
-                    <input id="tagSearch" class="smallsearchbar" type="text" placeholder="Search tags">
-                    <div class="filterlist">
-                        {% for tag in tagslist %}
-                        <div class="locationcontainer">
-                            <input type="checkbox" id="{{ tag }}" class="tag">
-                            <label for="{{ tag }}" class="locationtagtext">{{ tag }}</label>
+                <form id="filterpanel" method="post">
+                    {% csrf_token %}
+                    <div>
+                        <p id="filtertitle">Weather Status: </p>
+                        {{ weather }}              
+                        <p id="filtertitle">{{ lang.searchbutton_text }}</p>
+                        {{ filterform.search_input }}
+                        <label for="birthday">Date: </label>
+                        {{ filterform.date_input }}
+                        <button id="filterbutton">{{ lang.searchbutton_text }}</button>
+                        <p id="filtertitle">{{ lang.filterlocation_text }}</p>
+                        <p id="filtersubtitle">{{ lang.filterlocation_subtext }}</p>
+                        {{ filterform.tag_search }}
+                        <div class="filterlist">
+                            {{ filterform.render_tagslist | safe }}
                         </div>
-                        {% endfor %}
                     </div>
-                    {% comment %} <p id="showmoretext">{{ lang.showmore_text }}</p>
-                    <hr>
-                    <p id="filtersubtitle">{{ filtertopic_subtext }}</p>
-                        {% for tags in topiclist %}
-                        <div class="locationcontainer">
-                            <input type="checkbox" id="{{ tags.tags_name }}">
-                            <label for="{{ tag.tags_name }}" class="locationtagtext">{{ tag.tags_name }}</label>
-                        </div>
-                        {% endfor %}
-                    <p id="showmoretext">{{ lang.showmore_text }}</p> {% endcomment %}
-                </div>
+                </form>              
             </div>
         </section>
         <script src="{% static 'js/index.js' %}" async defer></script>
