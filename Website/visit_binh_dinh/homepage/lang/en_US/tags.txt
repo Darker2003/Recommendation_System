@@ -29,7 +29,7 @@ CHỢ
 CỔ_XƯA
 BÃI_CỎ
 ĐI_BỘ
-HẤP_
+HẤP_DẪN
 LẶN
 ĐỘNG_VẬT
 NHÀ_HÀNG
@@ -50,9 +50,9 @@ TRUYỀN_THỐNG
 NGHỈ_DƯỠNG
 ĐỀN_THỜ
 YÊN_BÌNH
-TRẢI
+TRẢI_NGHIỆM
 BIỂU_DIỄN
-ĐỊA
+ĐỊA_DANH
 CHỤP_ẢNH
 CON_ĐƯỜNG
 NGHỆ_THUẬT

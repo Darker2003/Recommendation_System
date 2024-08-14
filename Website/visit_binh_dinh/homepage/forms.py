@@ -7,9 +7,37 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
 from .models import userdatabase
 
-SALARY_CHOICE = {("1", "1.000.000đ - 3.000.000đ"), ("2", "6.000.000đ - 100.000.000d")}
+import datetime
 
-JOB_CHOICE = {("1", "Student"), ("2", "Other")}
+SALARY_CHOICE = [
+    ("1", "Under 5.000.000đ"),
+    ("2", "5.000.000đ - 10.000.000đ"),
+    ("3", "10.000.000đ - 15.000.000đ"),
+    ("4", "15.000.000đ - 20.000.000đ"),
+    ("5", "20.000.000đ - 30.000.000đ"),
+    ("6", "30.000.000đ - 50.000.000đ"),
+    ("7", "50.000.000đ - 70.000.000đ"),
+    ("8", "70.000.000đ - 100.000.000đ"),
+    ("9", "Over 100.000.000đ"),
+]
+
+JOB_CHOICE = [
+    ("1", "Software Developer"),
+    ("2", "Web Developer"),
+    ("3", "Data Scientist"),
+    ("4", "Project Manager"),
+    ("5", "Business Analyst"),
+    ("6", "Graphic Designer"),
+    ("7", "Marketing Specialist"),
+    ("8", "Sales Representative"),
+    ("9", "Customer Service Representative"),
+    ("10", "Human Resources Specialist"),
+    ("11", "Finance Analyst"),
+    ("12", "Product Manager"),
+    ("13", "Administrative Assistant"),
+    ("14", "Consultant"),
+    ("15", "Other"),
+]
 
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
@@ -119,10 +147,12 @@ class SignupForm(forms.Form):
         cleaned_data = super().clean()
         email = cleaned_data.get("signup_email")
         
+        print(email)
+        
         if email is None:
             raise ValidationError("Email cannot be None.")
         
-        if userdatabase.objects.filter(email=email).exists:
+        if userdatabase.objects.filter(email=email).exists():
             raise ValidationError("Email exists.")
 
         return email 
@@ -134,7 +164,7 @@ class SignupForm(forms.Form):
         if username is None:
             raise ValidationError("Username cannot be None.")
         
-        if userdatabase.objects.filter(username=username).exists:
+        if userdatabase.objects.filter(username=username).exists():
             raise ValidationError("Username exists.")
         
         return username
@@ -183,55 +213,79 @@ class SearchForm(forms.Form):
         max_length="150",
         min_length="2",
         required=True,
-        widget=forms.TextInput(attrs={"placeholder": "Search query here.", 'id':"searchbar"}))
+        widget=forms.TextInput(attrs={"placeholder": "Search query here.", 'class':"form-control"}))
     
-def extract_unique_tags(file_path):
-    unique_tags = set()  # Using a set to automatically ensure uniqueness
+    date_input = forms.DateField(
+        initial=datetime.date.today,
+        widget=forms.DateInput(attrs={"type": "date", "id": "birthday", "name": "birthday", "class": "form-control flex-grow-1", 'style': 'width: auto'})
+    )
+        
+def extract_unique_tags(file_path = 'homepage/lang/en_US/tags.txt'):
+    unique_tags = set() 
     
-    # Open the file
     with open(file_path, 'r', encoding='utf-8') as file:
-        # Iterate through each line in the file
         for line in file:
-            # Split the line into tags based on spaces
-            tags = line.strip().split()  # No need to specify the separator as split() splits on whitespace by default
-            # Add each tag to the set
+            tags = line.strip().split() 
             unique_tags.update(tags)
             result = [tag.replace('_', ' ').title() for tag in unique_tags]
     return result
 
-class FilterForm(forms.Form):
-    tags_file_path = 'homepage/lang/en_US/tags.txt'  # Replace with the path to your tags file
-    
+class FilterForm(forms.Form):  
     search_input = forms.CharField(
         max_length=150,
-        widget=forms.TextInput(attrs={"class": "smallsearchbar", "placeholder": "Search query here."})
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Search query here."})
     )
     
     date_input = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date", "id": "birthday", "name": "birthday"})
-    )
-
-    tag_search = forms.CharField(
-        max_length=150,
-        widget=forms.TextInput(attrs={"class": "smallsearchbar", "placeholder": "Search tags"})
+        initial=datetime.date.today,
+        widget=forms.DateInput(attrs={"type": "date", "id": "birthday", "name": "birthday", "class": "form-control"})
     )
 
     tagslist = forms.MultipleChoiceField(
-        choices=[],  # This will be populated dynamically
+        choices=[], 
         required=False
     )
 
-    def __init__(self, *args, tagslist=extract_unique_tags(tags_file_path), **kwargs):
+    sort_rating = forms.ChoiceField(
+        choices=[('default', 'Default'), ('views', 'Views'), ('rating', 'Rating')],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"})
+    )
+    
+    sort_order = forms.ChoiceField(
+        choices=[('0', 'Descending'), ('1', 'Ascending')],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"})
+    )
+    
+    def __init__(self, *args, tagslist=extract_unique_tags(), **kwargs):
         super(FilterForm, self).__init__(*args, **kwargs)
         self.fields['tagslist'].choices = [(tag, tag) for tag in tagslist]
-        
+            
     def render_tagslist(self):
-        tags_html = ''
-        for tag_value, tag_label in self.fields['tagslist'].choices:
-            tags_html += f'''
-                <div class="locationcontainer">
-                    <input type="checkbox" id="{tag_value}" class="tag" name="tagslist" value="{tag_value}">
-                    <label for="{tag_value}" class="locationtagtext">{tag_label}</label>
+        tags_html = '<div class="d-list">'
+
+        for i, (tag_value, tag_label) in enumerate(self.fields['tagslist'].choices):
+            if i < 5:
+                tags_html += f'''
+                    <input type="checkbox" class="btn-check" id="{tag_value}" name="tagslist" value="{tag_value}" autocomplete="off">
+                    <label class="btn btn-outline-primary m-1 tag-btn" for="{tag_value}">{tag_label}</label>
+                '''
+            else:
+                tags_html += f'''
+                    <input type="checkbox" class="btn-check" id="{tag_value}" name="tagslist" value="{tag_value}" autocomplete="off">
+                    <label class="btn btn-outline-primary m-1 hidden-tag tag-btn" for="{tag_value}">{tag_label}</label>
+                '''
+
+        tags_html += '</div>'
+
+        if len(self.fields['tagslist'].choices) > 5:
+            tags_html += '''
+                <div id="toggle-buttons" class="mt-2">
+                    <button id="show-more-button" type="button" class="btn btn-primary btn-sm" onclick="showMoreTags()">Show more</button>
+                    <button id="show-less-button" type="button" class="btn btn-primary btn-sm" onclick="showLessTags()" style="display: none;">Show less</button>
                 </div>
             '''
+
         return tags_html

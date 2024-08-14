@@ -1,11 +1,11 @@
-from django.urls import path
+from django.urls import path, re_path
 from django.contrib.staticfiles.urls import static
 
 from . import views
 
 urlpatterns = [
     path('', views.homepage, name='homepage'),
-    path('page/<int:page>/', views.homepage, name='homepage_page'),
+    path('<int:page>/', views.homepage, name='homepage'),
     path('login/', views.log_in, name='log_in'),
     path('signup/', views.signup, name='signup'),
     path('profile/', views.profile, name='profile'),
@@ -15,5 +15,8 @@ urlpatterns = [
     path('login/login_complete/', views.log_in_complete, name='log_in_complete'),
     path('logout/', views.log_out, name='log_out'),
     path('place/<slug:slug>/', views.location_detail, name='location_detail'),
+    path('place/<slug:slug>/rate/', views.rate_location, name='rate_location'),
     path('search/', views.search_request, name='search'),
+    path('filter/', views.filter_locations, name='filter_locations'),
+    path('rate/', views.rate_result, name='rate_result')
 ]

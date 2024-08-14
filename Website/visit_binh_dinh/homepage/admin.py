@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import locationdatabase, userdatabase, userlocationlogging, usersearchlogging
+from .models import locationdatabase, userdatabase, userlocationlogging, usersearchlogging, usertagweight
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 from django.contrib.auth.admin import UserAdmin
 
@@ -26,8 +26,8 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ("username", "email",)
     ordering = ("username", "email",)
 
-# Register your models here.
 admin.site.register(locationdatabase)
 admin.site.register(userdatabase, CustomUserAdmin)
 admin.site.register(userlocationlogging)
 admin.site.register(usersearchlogging)
+admin.site.register(usertagweight)

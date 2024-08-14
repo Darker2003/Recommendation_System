@@ -10,15 +10,11 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <title>{{ login_webtitle }}</title>
         <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1"> {% load bootstrap5 %} {% bootstrap_css %} {% bootstrap_javascript %}
+        <link rel="stylesheet" href="{% static 'css/index.css' %}">
         <link rel="stylesheet" href="{% static 'css/login.css' %}">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Manrope">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Open+Sans">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Merriweather">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     </head>
-    <body id="grad">
-        <img id="pagelogo" src="{% static 'image/logo_white.svg' %}">
+    <body id="grad" class="container d-flex flex-column justify-content-center align-items-center">
         <form id='loginpanel' action="{% url 'log_in_check' %}" method="post">
         {% csrf_token %}
             <h3>{{ lang.login_title }}</h3>
@@ -44,4 +40,5 @@
             {% endfor %}
             <p>{{ lang.noaccount_text }}</p>
         </form>
+        <img id="pagelogo" class="m-3" src="{% static 'image/logo_white.svg' %}">
     </body>
