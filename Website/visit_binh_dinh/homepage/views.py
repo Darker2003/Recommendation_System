@@ -337,6 +337,7 @@ def search_request(request):
             for location in fetch_list:
                 location.average_rating = calculate_average_rating(location.slug)
             
+            fetch_list.sort(key=lambda x: x.average_rating, reverse=True)
             print(fetch_list)
             
             context.update({

@@ -69,22 +69,14 @@ def customize_weights(rating, destination_name, question_tags, weights = 'homepa
             weights: the file path of the weights. Ex: 'weights_common.npy'
     Output: update the weights file in the same directory. Ex: 'weights_common.npy'
     '''
-    
-    # Load destinations data and initialize vectorizer
+
     destinations = pd.read_excel("homepage/destination_1.xlsx")
     vectorizer = CountVectorizer(max_features=10000, stop_words="english")
     vectorizer.fit_transform(destinations["tags"].values.astype('U')).toarray()
 
     question_vector = vectorizer.transform(question_tags).toarray()
 
-    if rating < 4:
-        factor = rating / 4 
-    elif rating > 4:
-        factor = 1 + (rating - 4) / 4  
-    else:
-        factor = 1 
-
-    customize_question_vector = np.where(question_vector == 1, question_vector * factor, question_vector)
+    customize_question_vector = np.where(question_vector == 1, question_vector * ((rating + 1)/5), question_vector)
     weights_vector = np.load(weights)
     index = destinations.index[destinations['name'] == destination_name].tolist()
 
