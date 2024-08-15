@@ -101,6 +101,11 @@ class SignupForm(forms.Form):
         min_length="6",
         required=True,
         widget=forms.TextInput(attrs={"placeholder": "Enter your username here."}),
+        validators=[
+            RegexValidator(
+                r"^\S+$", "Username must not contain any whitespace characters."
+            )
+        ],
     )
     signup_fullname = forms.CharField(
         max_length="50",
@@ -109,11 +114,6 @@ class SignupForm(forms.Form):
         widget=forms.TextInput(
             attrs={"placeholder": "Enter your name here (Optional)."}
         ),
-        validators=[
-            RegexValidator(
-                r"^\S+$", "Username must not contain any whitespace characters."
-            )
-        ],
     )
     signup_password = forms.CharField(
         widget=forms.PasswordInput(attrs={"placeholder": "Insert your password here."}),

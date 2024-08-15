@@ -154,12 +154,13 @@ def fetch_question_tags(question):
         response = requests.get(url, timeout=3)
         response.raise_for_status()
         data = response.json().get("question_tags", [])
-        return [" ".join(data)]
+        return [" ".join([location.replace(" ", "_") for location in data])]
     
     except requests.RequestException:
         return None
     
 def get_locations_by_similarity(data, weights_file):
+    print('Weight_file', weights_file)
     name_list = similarity.suggest_destination(data, file=weights_file, top_n=12)["name"]
     fetch_list = []
 
@@ -336,7 +337,6 @@ def search_request(request):
             for location in fetch_list:
                 location.average_rating = calculate_average_rating(location.slug)
             
-            fetch_list.sort(key=lambda x: x.average_rating, reverse=True)
             print(fetch_list)
             
             context.update({
@@ -551,25 +551,50 @@ def rate_location(request, slug):
         
     return redirect(reverse('location_detail', args=[slug]))
 
+# @require_POST
+# def rate_result(request):
+#     if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.user.is_authenticated:
+#         data = json.loads(request.body)
+#         rating = int(data.get('rating', 0))
+#         question_tags = ast.literal_eval(data.get('question_tags', '[]'))
+#         location_list = json.loads(data.get('locationlist', '{}'))
+#         user = request.user
+        
+#         if rating != 0 and location_list:
+#             try:
+#                 weights_file = get_user_weights_file(user)
+                
+#                 for location in location_list:
+#                     similarity.customize_weights(
+#                         rating=rating, destination_name=location['fields']['place_name'],
+#                         question_tags=question_tags, weights=weights_file
+#                     )
+#                 return JsonResponse({"success": True})
+#             except Exception as e:
+#                 return JsonResponse({"success": False, "error": str(e)})
+#     return JsonResponse({"success": False, "error": "Invalid request."})
+
 @require_POST
 def rate_result(request):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.user.is_authenticated:
         data = json.loads(request.body)
         rating = int(data.get('rating', 0))
         question_tags = ast.literal_eval(data.get('question_tags', '[]'))
-        location_list = json.loads(data.get('locationlist', '{}'))
+        location_id = data.get('location_id')
         user = request.user
-        
-        if rating != 0 and location_list:
+
+        print(data)
+        if rating != 0 and location_id:
             try:
+                location = locationdatabase.objects.get(place_id=location_id)
                 weights_file = get_user_weights_file(user)
-                print(question_tags)
-                
-                for location in location_list:
-                    similarity.customize_weights(
-                        rating=rating, destination_name=location['fields']['place_name'],
-                        question_tags=question_tags, weights=weights_file
-                    )
+
+                print(rating, location.place_name, question_tags, weights_file)
+                similarity.customize_weights(
+                    rating=rating, destination_name=location.place_name, question_tags=question_tags,
+                    weights=weights_file
+                )
+                similarity.compare_and_print_differences(weights_file)
                 return JsonResponse({"success": True})
             except Exception as e:
                 return JsonResponse({"success": False, "error": str(e)})

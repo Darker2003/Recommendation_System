@@ -70,15 +70,30 @@ def customize_weights(rating, destination_name, question_tags, weights = 'homepa
     Output: update the weights file in the same directory. Ex: 'weights_common.npy'
     '''
     
-    destinations = pd.read_excel("homepage\destination_1.xlsx")
+    # Load destinations data and initialize vectorizer
+    destinations = pd.read_excel("homepage/destination_1.xlsx")
     vectorizer = CountVectorizer(max_features=10000, stop_words="english")
     vectorizer.fit_transform(destinations["tags"].values.astype('U')).toarray()
+
     question_vector = vectorizer.transform(question_tags).toarray()
-    customize_question_vector = np.where(question_vector == 1, question_vector * (rating+1/5), question_vector)
+
+    if rating < 4:
+        factor = rating / 4 
+    elif rating > 4:
+        factor = 1 + (rating - 4) / 4  
+    else:
+        factor = 1 
+
+    customize_question_vector = np.where(question_vector == 1, question_vector * factor, question_vector)
     weights_vector = np.load(weights)
     index = destinations.index[destinations['name'] == destination_name].tolist()
-    weights_vector[index] = np.where(customize_question_vector != 0, customize_question_vector * weights_vector[index], weights_vector[index])
-    np.save('weights_common.npy', weights_vector)
+
+    weights_vector[index] = np.clip(np.where(customize_question_vector != 0,
+                                             customize_question_vector * weights_vector[index],
+                                             weights_vector[index]),
+                                    0, 1)
+
+    np.save(weights, weights_vector)
 
 def suggest_destination(question_tags, file, top_n = 5):
     '''
@@ -98,7 +113,32 @@ def suggest_destination(question_tags, file, top_n = 5):
     result = destinations.iloc[:top_n,:]
     return result
 
+def compare_and_print_differences(file_to_compare: str, common_weights_file: str = 'homepage/weights/weights_common.npy'):
+    """
+    Compare weights in the given .npy file with the common weights file and print the differences.
 
+    :param file_to_compare: Path to the .npy file to compare.
+    :param common_weights_file: Path to the common weights file. Default is 'weights_common.npy'.
+    """
+    weights_to_compare = np.load(file_to_compare)
+    common_weights = np.load(common_weights_file)
+
+    if weights_to_compare.shape != common_weights.shape:
+        print("The two weight matrices have different shapes and cannot be compared directly.")
+        print(f"Shape of common_weights: {common_weights.shape}")
+        print(f"Shape of weights_to_compare: {weights_to_compare.shape}")
+        return
+
+    difference = weights_to_compare - common_weights
+    indices = np.where(difference != 0)
+    
+    if len(indices[0]) == 0:
+        print("The weights are identical.")
+    else:
+        print(f"The weights differ at {len(indices[0])} positions:")
+        for row, col in zip(indices[0], indices[1]):
+            print(f"Row {row}, Column {col}: common_weights = {common_weights[row, col]}, weights_to_compare = {weights_to_compare[row, col]}")
+            
 if __name__ == "__main__":
     question_tags = ['BIỂN BƠI_LỘI GIA_ĐÌNH TRẢI_NGHIỆM VUI_CHƠI LẶN SAN_HÔ'] 
     result = suggest_destination(question_tags)
