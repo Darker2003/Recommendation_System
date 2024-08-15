@@ -164,8 +164,8 @@ def fetch_question_tags(question):
     except requests.RequestException:
         return None
     
-def get_locations_by_similarity(data, weights_file):
-    name_list = Get_tags_weight_copilot.suggest_destination(data, file_path=weights_file, top_n=12)["name"]
+def get_locations_by_similarity(data, weights_file, sort_order=False):
+    name_list = Get_tags_weight_copilot.suggest_destination(data, file_path=weights_file, sort=sort_order, top_n=12)["name"]
     fetch_list = []
 
     for name in name_list:
@@ -318,6 +318,10 @@ def search_request(request):
         form = SearchForm(request.POST)
         if form.is_valid():
             question = form.cleaned_data['search_input']
+            sort_mode = form.cleaned_data['sort_rating']
+            sort_order = [True if form.cleaned_data['sort_order'] == '0' else False][0]
+            print(question, sort_mode, sort_order)
+            
             user = request.user if request.user.is_authenticated else None
             
             weights_file = get_user_weights_file(user)
@@ -331,13 +335,6 @@ def search_request(request):
                 context["search_logging"] = "Error: Connection Timeout or Server Error"
                 return render(request, 'index.html', context)
             
-            # if user:
-            #     try: 
-            #         unprocessed_logs = userlocationlogging.objects.filter(username=user, processed=False).order_by('-search_date')
-            #         Get_tags_weight_copilot.history_weights(ast.literal_eval(unprocessed_logs.result_query), 0.1, weights=user.weights_file)
-            #     except Exception as e:
-            #         print('Unable to update weights.')
-            
             try:
                 if user:  
                     unprocessed_logs = usersearchlogging.objects.filter(username=user, processed=False).order_by('-search_date')[0]
@@ -350,7 +347,7 @@ def search_request(request):
             except Exception as e:
                 print('Unexpected error.')            
             
-            fetch_list = get_locations_by_similarity(data, weights_file)
+            fetch_list = get_locations_by_similarity(data, weights_file, sort_order)
             if not fetch_list:
                 context["search_logging"] = "Error: Unable to find locations based on question."
                 return render(request, 'index.html', context)
@@ -361,7 +358,10 @@ def search_request(request):
             for location in fetch_list:
                 location.average_rating = calculate_average_rating(location.slug)
         
-            # fetch_list.sort(key=lambda x: x.average_rating, reverse=True)
+            if sort_mode == 'rating':
+                fetch_list.sort(key=lambda x: x.average_rating, reverse=sort_order)
+            elif sort_mode == 'views':
+                fetch_list.sort(key=lambda x: x.view_count, reverse=sort_order)
             
             context.update({
                 "locationlist": fetch_list,
@@ -574,29 +574,6 @@ def rate_location(request, slug):
             pass
         
     return redirect(reverse('location_detail', args=[slug]))
-
-# @require_POST
-# def rate_result(request):
-#     if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.user.is_authenticated:
-#         data = json.loads(request.body)
-#         rating = int(data.get('rating', 0))
-#         question_tags = ast.literal_eval(data.get('question_tags', '[]'))
-#         location_list = json.loads(data.get('locationlist', '{}'))
-#         user = request.user
-        
-#         if rating != 0 and location_list:
-#             try:
-#                 weights_file = get_user_weights_file(user)
-                
-#                 for location in location_list:
-#                     Get_tags_weight_copilot.customize_weights(
-#                         rating=rating, destination_name=location['fields']['place_name'],
-#                         question_tags=question_tags, weights=weights_file
-#                     )
-#                 return JsonResponse({"success": True})
-#             except Exception as e:
-#                 return JsonResponse({"success": False, "error": str(e)})
-#     return JsonResponse({"success": False, "error": "Invalid request."})
 
 @require_POST
 def rate_result(request):

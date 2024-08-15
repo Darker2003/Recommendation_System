@@ -219,6 +219,18 @@ class SearchForm(forms.Form):
         initial=datetime.date.today,
         widget=forms.DateInput(attrs={"type": "date", "id": "birthday", "name": "birthday", "class": "form-control flex-grow-1", 'style': 'width: auto'})
     )
+    
+    sort_rating = forms.ChoiceField(
+        choices=[('default', 'Default'), ('views', 'Views'), ('rating', 'Rating')],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select flex-grow-1", 'style': 'width: auto'})
+    )
+    
+    sort_order = forms.ChoiceField(
+        choices=[('0', 'Descending'), ('1', 'Ascending')],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select flex-grow-1", 'style': 'width: auto'})
+    )
         
 def extract_unique_tags(file_path = 'homepage/lang/en_US/tags.txt'):
     unique_tags = set() 

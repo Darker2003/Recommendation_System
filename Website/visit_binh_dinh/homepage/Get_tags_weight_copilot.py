@@ -183,7 +183,7 @@ def add_weights_to_tags(tags_vector, weights):
     weights_vector = np.load(weights)
     return weights_vector * tags_vector
 
-def suggest_destination(question_tags, file_path, top_n=12):
+def suggest_destination(question_tags, file_path, sort=False, top_n=12):
     des_list = destinations[1:]
     question_vector = vectorizer.transform(question_tags).toarray()
 
@@ -192,7 +192,7 @@ def suggest_destination(question_tags, file_path, top_n=12):
 
     des_list['simi_score']= similarity_matrix
     des_list = des_list[des_list['simi_score'] > 0]
-    des_list_sorted = des_list.sort_values(by ='simi_score', ascending=False)
+    des_list_sorted = des_list.sort_values(by ='simi_score', ascending=sort)
     result = des_list_sorted.iloc[:top_n,:]
     print('Tags extracted from user question:\n', question_tags)
     print('The most relevant destinations is:')
