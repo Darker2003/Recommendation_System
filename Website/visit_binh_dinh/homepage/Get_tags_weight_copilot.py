@@ -1,19 +1,20 @@
+import json
+
+import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
-import json 
 
 SALARY_SCALING = {
-    "1": (-0.2, 0.2), 
-    "2": (-0.15, 0.15),
-    "3": (-0.1, 0.1),
-    "4": (-0.05, 0.05),
-    "5": (0, 0), 
-    "6": (0.05, -0.05),
-    "7": (0.1, -0.1),
-    "8": (0.15, -0.15),
-    "9": (0.2, -0.2)
+    1: (-0.2, 0.2), 
+    2: (-0.15, 0.15),
+    3: (-0.1, 0.1),
+    4: (-0.05, 0.05),
+    5: (0, 0), 
+    6: (0.05, -0.05),
+    7: (0.1, -0.1),
+    8: (0.15, -0.15),
+    9: (0.2, -0.2)
 }
 
 # Load the JSON data
@@ -38,16 +39,21 @@ sorted_tags = list(sorted_tags)
 for i in range(len(sorted_tags)):
     sorted_tags[i] = sorted_tags[i].replace(" ", "_")
 
-destinations = pd.read_excel("homepage/destination_1.xlsx")
+destinations = pd.read_excel("homepage\destination_1.xlsx")
 destinations.head()
 vectorizer = CountVectorizer(max_features=10000, stop_words="english")
 tags_vector = vectorizer.fit_transform(destinations["tags"].values.astype('U')).toarray()
 tags_vector = tags_vector[1:]
-destinations = destinations[1:]
 feature_names = vectorizer.get_feature_names_out()
 
-def create_weights(file_path):
-    # Example array
+def create_bias_weights_copilot(file_path):
+    """
+    Creates a weights vector based on predefined bias values for each tag in the destinations.
+    
+    This function initializes a zero weights vector and maps predefined bias weights to
+    the appropriate positions based on the tags present in the destinations dataset.
+    The weights vector is then saved as a NumPy file.
+    """
     weights_tags_vector = [[1, 0.9, 0.8, 1, 0.7, 1, 0.9, 0.6, 0.9, 0.9, 0.8, 0.7, 0.8, 1, 1],
                         [1, 0.9, 0.8, 1, 0.7, 0.9, 1, 0.9, 0.6, 0.9, 0.9, 0.8, 0.7, 0.8, 1, 0.8, 1],
                         [0.9, 0.8, 1, 0.7, 1, 0.9, 0.9, 0.6, 0.9, 0.9, 0.8, 0.7, 0.8, 1, 1],
@@ -87,21 +93,24 @@ def create_weights(file_path):
                         [1, 0.8, 0.9, 0.7, 0.6, 1, 0.9, 0.8, 1, 1, 0.9, 0.7, 0.6, 0.8, 0.8, 0.8, 0.7, 0.9, 0.9, 1, 0.7, 0.6, 1],
                         [0.9, 0.7, 1, 1, 0.8, 0.7, 0.8, 0.8, 0.7, 1, 1, 1, 1, 1]
                         ]
-
     weights_vector = np.zeros(tags_vector.shape)
-    feature_names = vectorizer.get_feature_names_out()
 
-    for i, row in enumerate(destinations["tags"][1:].values):
+    for i, row in enumerate(destinations['tags'][1:].values):
         tags = row.split()
         for tag, weight in zip(tags, weights_tags_vector[i]):
             index = np.where(feature_names == tag.lower())[0][0]
             weights_vector[i][index] = weight
+            
+    max_freq = max(sorted_tags_dict.values())
+    
+    for i, row in enumerate(destinations['tags'][1:].values):
+        tags = row.split()
+        for tag in tags:
+            index = np.where(feature_names == tag.lower())[0][0]
+            weights_vector[i][index] = f"{(sorted_tags_dict[tag.replace('_', ' ')]/max_freq):.2f}"
+            
     np.save(file_path, weights_vector)
     
-def add_weights_to_tags(tags_vector, weights):
-    weights_vector = np.load(weights)
-    return weights_vector * tags_vector
-
 def registration_weight(salary_choice, weights='homepage/weights/weights_common.npy'):
     '''
     Function to customize the feedback weights based on rating and salary choice.
@@ -112,25 +121,26 @@ def registration_weight(salary_choice, weights='homepage/weights/weights_common.
     Output: Update the weights file in the same directory. Ex: 'weights_common.npy'
     '''
     
-    vectorizer.fit_transform(destinations["tags"].values.astype('U')).toarray()
-
     weights_vector = np.load(weights)
-    index = destinations.tolist()
-
-    tags = ["BÌNH_DÂN", "CAO_CẤP"]
+    binh_dan_scale, cao_cap_scale = SALARY_SCALING[int(salary_choice)]
+    
+    tags = ["BÌNH_DÂN"]
     question_vector = vectorizer.transform(tags).toarray()
-
-    binh_dan_index = question_vector[0].nonzero()[0][0]
-    cao_cap_index = question_vector[1].nonzero()[0][0]
     
-    binh_dan_scale, cao_cap_scale = SALARY_SCALING[salary_choice]
+    for i in range(weights_vector.shape[0]):
+        mask = weights_vector[i] != 0
+        weights_vector[i] = np.clip(weights_vector[i] + (question_vector[0] * binh_dan_scale * mask), 0, 1)
     
-    weights_vector[index, binh_dan_index] = np.clip(weights_vector[index, binh_dan_index] + binh_dan_scale, 0, 1)
-    weights_vector[index, cao_cap_index] = np.clip(weights_vector[index, cao_cap_index] + cao_cap_scale, 0, 1)
+    tags = ["CAO_CẤP"]
+    question_vector = vectorizer.transform(tags).toarray()
+    
+    for i in range(weights_vector.shape[0]):
+        mask = weights_vector[i] != 0
+        weights_vector[i] = np.clip(weights_vector[i] + (question_vector[0] * cao_cap_scale * mask), 0, 1)
     
     np.save(weights, weights_vector)
   
-def history_weights(question_tags, increment_value=0.1, weights='homepage/weights/weights_common.npy'):
+def history_weights(question_tags, increment_value=0.05, weights='homepage/weights/weights_common.npy'):
     '''
     Function to update the feedback weights based on question tags by a constant value.
     Input: 
@@ -143,7 +153,8 @@ def history_weights(question_tags, increment_value=0.1, weights='homepage/weight
     weights_vector = np.load(weights)
     
     for i in range(weights_vector.shape[0]):
-        weights_vector[i] = np.clip(weights_vector[i] + question_vector[0] * increment_value, 0, 1)
+        mask = weights_vector[i] != 0
+        weights_vector[i] = np.clip(weights_vector[i] + (question_vector[0] * increment_value * mask), 0, 1)
 
     np.save(weights, weights_vector)
     
@@ -167,20 +178,27 @@ def customize_weights(rating, destination_name, question_tags, weights = 'homepa
                                     0, 1)
 
     np.save(weights, weights_vector)
+    
+def add_weights_to_tags(tags_vector, weights):
+    weights_vector = np.load(weights)
+    return weights_vector * tags_vector
 
-def suggest_destination(question_tags, file, top_n = 5):
-    '''
-    input: tags is extracted from the question. Ex: question_tags = ['ĐỊA_ĐIỂM DU_LỊCH BIỂN SAN_HÔ BƠI_LỘI CÁT ĐÁ VUI_CHƠI TRẺ_EM']
-           data of the destination: destination_1.xlsx
-    output: top 5 relevant destination according to the tags 
-            return DataFrame contain 'name', 'description','image' and 'simi_score'
-    '''
+def suggest_destination(question_tags, file_path, top_n=12):
+    des_list = destinations[1:]
     question_vector = vectorizer.transform(question_tags).toarray()
-    weighted_tags_vector = add_weights_to_tags(tags_vector, file)
+
+    weighted_tags_vector = add_weights_to_tags(tags_vector, file_path)
     similarity_matrix = cosine_similarity(weighted_tags_vector, question_vector)
-    destinations['simi_score'] = similarity_matrix
-    destinations_sorted = destinations.sort_values(by ='simi_score', ascending=False)
-    result = destinations_sorted.iloc[top_n,:]
+
+    des_list['simi_score']= similarity_matrix
+    des_list = des_list[des_list['simi_score'] > 0]
+    des_list_sorted = des_list.sort_values(by ='simi_score', ascending=False)
+    result = des_list_sorted.iloc[:top_n,:]
+    print('Tags extracted from user question:\n', question_tags)
+    print('The most relevant destinations is:')
+    for title, similarity in result.iterrows():
+        print(similarity['name'], similarity['simi_score'])
+        
     return result
 
 def compare_and_print_differences(file_to_compare: str, common_weights_file: str = 'homepage/weights/weights_common.npy'):
@@ -210,5 +228,4 @@ def compare_and_print_differences(file_to_compare: str, common_weights_file: str
             print(f"Row {row}, Column {col}: common_weights = {common_weights[row, col]}, weights_to_compare = {weights_to_compare[row, col]}")
             
 if __name__ == "__main__":
-    create_weights('homepage/weights/weights_common.npy')
-    
+    create_bias_weights_copilot('homepage/weights/weights_common.npy')

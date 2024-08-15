@@ -64,7 +64,7 @@ class userdatabase(AbstractBaseUser, PermissionsMixin):
     personid = models.BigAutoField(primary_key=True)
     username = models.CharField(max_length=50, default='default_username')
     email = models.EmailField(unique=True)
-    full_name = models.CharField(max_length=100, blank=True, null=True)  # Optional field
+    full_name = models.CharField(max_length=100, blank=True, null=True)
     jobs = models.CharField(max_length=100, default=0)
     salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     phone = models.CharField(validators=[phone_regex], max_length=17)
@@ -100,6 +100,10 @@ class usersearchlogging(models.Model):
     search_query = models.TextField()
     result_query = models.TextField(null=True)
     search_date = models.DateTimeField(auto_now_add=True)
+    processed = models.BooleanField(default=False)
+    
+    def __str__(self) -> str:
+        return f"{self.log_id}, {self.username}, {self.search_query}, {self.result_query}, {self.processed}"
     
 class commentreview(models.Model):
     comment_id = models.BigAutoField(primary_key=True)

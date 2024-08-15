@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.core.serializers import serialize
 
-from .forms import LoginForm, SignupForm, ProfileForm, SearchForm, FilterForm
+from .forms import LoginForm, SignupForm, ProfileForm, SearchForm, FilterForm, SALARY_CHOICE
 from .models import locationdatabase, userdatabase, usersearchlogging, userlocationlogging, userratinglogging, usertagweight
 
 import ast
@@ -31,8 +31,12 @@ import logging
 import shutil
 import uuid
 
-from . import similarity
+from . import Get_tags_weight_copilot
 
+def find_max_salary_choice(salary_choices):
+    numbers = [int(choice[0]) for choice in salary_choices]
+    return max(numbers)
+    
 def extract_unique_tags(file_path = 'homepage/lang/en_US/tags.txt'):
     unique_tags = set() 
     
@@ -143,6 +147,7 @@ def get_user_weights_file(user):
     except IOError as e:
         return None
 
+    Get_tags_weight_copilot.registration_weight(user.salary, user.weights_file)
     user.save()
     return unique_weights_file
 
@@ -160,8 +165,7 @@ def fetch_question_tags(question):
         return None
     
 def get_locations_by_similarity(data, weights_file):
-    print('Weight_file', weights_file)
-    name_list = similarity.suggest_destination(data, file=weights_file, top_n=12)["name"]
+    name_list = Get_tags_weight_copilot.suggest_destination(data, file_path=weights_file, top_n=12)["name"]
     fetch_list = []
 
     for name in name_list:
@@ -322,23 +326,42 @@ def search_request(request):
                 return render(request, 'index.html', context)
 
             data = fetch_question_tags(question)
+            print(data)
             if data is None:
                 context["search_logging"] = "Error: Connection Timeout or Server Error"
                 return render(request, 'index.html', context)
+            
+            # if user:
+            #     try: 
+            #         unprocessed_logs = userlocationlogging.objects.filter(username=user, processed=False).order_by('-search_date')
+            #         Get_tags_weight_copilot.history_weights(ast.literal_eval(unprocessed_logs.result_query), 0.1, weights=user.weights_file)
+            #     except Exception as e:
+            #         print('Unable to update weights.')
+            
+            try:
+                if user:  
+                    unprocessed_logs = usersearchlogging.objects.filter(username=user, processed=False).order_by('-search_date')[0]
+
+                if unprocessed_logs:
+                    print(unprocessed_logs)
+                    Get_tags_weight_copilot.history_weights(ast.literal_eval(unprocessed_logs.result_query), 0.1, weights=user.weights_file)
+                    unprocessed_logs.processed = True
+                    unprocessed_logs.save()
+            except Exception as e:
+                print('Unexpected error.')            
             
             fetch_list = get_locations_by_similarity(data, weights_file)
             if not fetch_list:
                 context["search_logging"] = "Error: Unable to find locations based on question."
                 return render(request, 'index.html', context)
 
-            log_search_result(request, question, fetch_list)
+            log_search_result(request, question, data)
             context["search_logging"] = "Success! Please scroll down for your result."
             
             for location in fetch_list:
                 location.average_rating = calculate_average_rating(location.slug)
-            
-            fetch_list.sort(key=lambda x: x.average_rating, reverse=True)
-            print(fetch_list)
+        
+            # fetch_list.sort(key=lambda x: x.average_rating, reverse=True)
             
             context.update({
                 "locationlist": fetch_list,
@@ -566,7 +589,7 @@ def rate_location(request, slug):
 #                 weights_file = get_user_weights_file(user)
                 
 #                 for location in location_list:
-#                     similarity.customize_weights(
+#                     Get_tags_weight_copilot.customize_weights(
 #                         rating=rating, destination_name=location['fields']['place_name'],
 #                         question_tags=question_tags, weights=weights_file
 #                     )
@@ -584,18 +607,16 @@ def rate_result(request):
         location_id = data.get('location_id')
         user = request.user
 
-        print(data)
         if rating != 0 and location_id:
             try:
                 location = locationdatabase.objects.get(place_id=location_id)
                 weights_file = get_user_weights_file(user)
 
-                print(rating, location.place_name, question_tags, weights_file)
-                similarity.customize_weights(
+                Get_tags_weight_copilot.customize_weights(
                     rating=rating, destination_name=location.place_name, question_tags=question_tags,
                     weights=weights_file
                 )
-                similarity.compare_and_print_differences(weights_file)
+                Get_tags_weight_copilot.compare_and_print_differences(weights_file)
                 return JsonResponse({"success": True})
             except Exception as e:
                 return JsonResponse({"success": False, "error": str(e)})
