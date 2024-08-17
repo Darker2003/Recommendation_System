@@ -256,7 +256,9 @@
                 </div>
                 <div class="card-body text-white d-flex flex-column justify-content-center">
                   {% if locationinfo.weather_approve %}
-                    <img src="{% static 'image/approveicon.png' %}" style="width: 30px; height: 30px; position: absolute; top: 5px; right: 5px;">
+                    <div class="d-flex flex-row align-items-center justify-content-center" style="position: absolute; top: 5px; right: 5px;">
+                      <img src="{% static 'image/approveicon.png' %}" style="width: 30px; height: 30px;">
+                    </div>
                   {% endif %}
                   <div>
                     <h6 class="text-truncate">{{ locationinfo.tags }}</h6>
@@ -284,7 +286,7 @@
                   </div>
                   {% elif show_rating %}
                   <div class="alert alert-warning d-flex align-items-center justify-content-center p-1 m-0" role="alert">
-                    <h6>You need to log in to rate.</h6>
+                    <h6 class="p-0 m-0">Please log in to rate suggestion.</h6>
                   </div>
                   {% endif %}
                   <a href="{% url 'location_detail' slug=locationinfo.slug %}" class="mt-1">

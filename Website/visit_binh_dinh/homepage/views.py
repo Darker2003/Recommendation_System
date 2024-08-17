@@ -406,7 +406,6 @@ def search_request(request):
             sort_mode = form.cleaned_data['sort_rating']
             sort_order = [True if form.cleaned_data['sort_order'] == '0' else False][0]
             current_weather, weather_tagline, weather_info = check_weather_api()
-            print(question, sort_mode, sort_order)
             
             user = request.user if request.user.is_authenticated else None
             
@@ -514,7 +513,7 @@ def profile(request):
         form = ProfileForm(request.POST, instance=user)
         if form.is_valid():
             form.save()
-            return redirect('homepage')  # Redirect to the homepage or any other page after successful update
+            return redirect('homepage')
     else:
         form = ProfileForm(instance=user)
 
@@ -552,10 +551,9 @@ def signup_register(request):
                         password=form.cleaned_data['signup_password']
                     )
                     return redirect(reverse('homepage'))
-                except IntegrityError as e:
-                    # Handle unexpected database errors
+                except Exception as e:
                     form.add_error(None, f"An unexpected error occurred: {e}")
-        # If the form is invalid or user exists, re-render the form with errors
+
         return render(request, 'signup.html', context)
     else:
         context['signupform'] = SignupForm()
@@ -695,7 +693,7 @@ def rate_result(request):
                     rating=rating, destination_name=location.place_name, question_tags=question_tags,
                     weights=weights_file
                 )
-                # Get_tags_weight_copilot.compare_and_print_differences(weights_file)
+                Get_tags_weight_copilot.compare_and_print_differences(weights_file)
                 return JsonResponse({"success": True})
             except Exception as e:
                 return JsonResponse({"success": False, "error": str(e)})

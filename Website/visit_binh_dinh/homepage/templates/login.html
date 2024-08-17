@@ -38,7 +38,7 @@
                     <p id="errormsg">{{ error|escape }}</p>
                 {% endfor %}
             {% endfor %}
-            <p>{{ lang.noaccount_text }}</p>
+            <p>No account? <a href="{% url 'signup' %}">Sign up</a> here.</p>
         </form>
         <img id="pagelogo" class="m-3" src="{% static 'image/logo_white.svg' %}">
     </body>

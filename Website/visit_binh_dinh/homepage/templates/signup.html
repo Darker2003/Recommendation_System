@@ -35,6 +35,7 @@
             </select>
             {{ signupform.signup_phone }}
             {{ signupform.signup_password }}
+            <p class="text-secondary">Create a strong password with at least 8 characters, including uppercase, lowercase, numbers, and special symbols.</p>
             {{ signupform.signup_repassword }}
             <div id="rememberme">
                 {{ signupform.agree_terms }}
@@ -51,7 +52,7 @@
                     <p id="errormsg">{{ error|escape }}</p>
                 {% endfor %}
             {% endfor %}
-            <p>{{ lang.alreadyhasaccount_text }}</p>
+            <p>Already has an account? <a href="{% url 'log_in_check' %}">Sign in</a> here.</p>
         </form>
         <img id="pagelogo" class="m-3" src="{% static 'image/logo_white.svg' %}">
     </body>
