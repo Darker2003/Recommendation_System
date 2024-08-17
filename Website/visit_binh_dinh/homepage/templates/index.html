@@ -22,6 +22,7 @@
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1"> {% load bootstrap5 %} {% bootstrap_css %} {% bootstrap_javascript %}
     <link rel="stylesheet" href="{% static 'css/index.css' %}">
+    <script src="https://kit.fontawesome.com/fc161a42c6.js" crossorigin="anonymous"></script>
   </head>
   <body>
     <!--[if lt IE 7]>
@@ -51,7 +52,6 @@
           <div class="ms-auto d-flex gap-4 flex-row align-items-center justify-content-between text-white">
             {% if user.is_authenticated %}
               <button class="btn btn-primary d-flex justify-content-center" onclick="window.location.href = '{% url 'log_out' %}'">LOG OUT</button>
-              <button class="btn btn-primary d-flex justify-content-center" onclick="window.location.href = '{% url 'profile' %}'">PROFILE</button>
             {% else %}
               <button class="btn btn-primary d-flex justify-content-center" onclick="window.location.href = '{% url 'log_in' %}'">LOG IN</button>
               <button class="btn btn-primary d-flex justify-content-center" onclick="window.location.href = '{% url 'signup' %}'">SIGN UP</button>
@@ -254,7 +254,10 @@
                 <div class="card-img-container">
                   <img class="card-img-top" src="/media/{{ locationinfo.image }}" alt="{{ locationinfo.place_name }}">
                 </div>
-                <div class="card-body text-white d-flex flex-column justify-content-between">
+                <div class="card-body text-white d-flex flex-column justify-content-center">
+                  {% if locationinfo.weather_approve %}
+                    <img src="{% static 'image/approveicon.png' %}" style="width: 30px; height: 30px; position: absolute; top: 5px; right: 5px;">
+                  {% endif %}
                   <div>
                     <h6 class="text-truncate">{{ locationinfo.tags }}</h6>
                     <h4 class="text-truncate">
@@ -262,33 +265,35 @@
                     </h4>
                   </div>
                   <div class="d-flex justify-content-between">
-                    <h6>{{ locationinfo.average_rating }} ★</h6>
+                    <h6>{{ locationinfo.average_rating }} ★ <span class="text-secondary">({{ locationinfo.total_rating }})</span></h6>
                     <h6>Views: {{ locationinfo.view_count }}</h6>
                   </div>
-                  <div id="rating-section" class="d-flex flex-row justify-content-between gap-2">
+                  {% if user.is_authenticated and show_rating %}
+                  <div id="rating-section" class="d-flex flex-row justify-content-center flex-fill gap-2">
                     <div class="align-items-center">
-                      {% if user.is_authenticated %}
-                        {% if show_rating %}
-                        <div class="star-wrapper align-items-center justify-content-center" data-location="{{ locationinfo.place_id }}">
-                          {% for i in "54321" %}
-                              <a href="javascript:void(0);" class="s{{ i }} rating-star" data-rating="{{ i }}" data-location="{{ locationinfo.place_id }}">
-                                  <h4 class="p-0 m-0">★</h4>
-                              </a>
-                          {% endfor %}
-                            <h6 class="p-0 m-0">Rate suggestion:</h6>
-                        </div>
-                        <div id="rating-message-{{ locationinfo.place_id }}" class="rating-message"></div>
-                        {% endif %}
-                      {% endif %}
+                      <div class="star-wrapper alert alert-primary align-items-center justify-content-center m-0 p-1" data-location="{{ locationinfo.place_id }}">
+                        {% for i in "54321" %}
+                            <a href="javascript:void(0);" class="s{{ i }} rating-star" data-rating="{{ i }}" data-location="{{ locationinfo.place_id }}">
+                                <h5 class="p-0 m-0">★</h5>
+                            </a>
+                        {% endfor %}
+                        <h6 class="p-0 m-0">Rate suggestion:</h6>
+                      </div>
+                      <div id="rating-message-{{ locationinfo.place_id }}" class="rating-message alert alert-warning align-items-center justify-content-center m-0 p-1"></div>
                     </div>
-                </div>
-                  <a href="{% url 'location_detail' slug=locationinfo.slug %}" class="mt-3">
+                  </div>
+                  {% elif show_rating %}
+                  <div class="alert alert-warning d-flex align-items-center justify-content-center p-1 m-0" role="alert">
+                    <h6>You need to log in to rate.</h6>
+                  </div>
+                  {% endif %}
+                  <a href="{% url 'location_detail' slug=locationinfo.slug %}" class="mt-1">
                     <button class="btn btn-primary w-100">MORE INFO</button>
                   </a>
                 </div>
               </div>
             </div>
-            {% endfor %}
+            {% endfor %}            
           </div>
           <div style="display: flex; align-items: center; justify-content: center;">
             {{ search_logging }}
@@ -427,9 +432,12 @@
                     const ratingMessage = document.getElementById('rating-message-' + locationId);
                     if (data.success) {
                         ratingMessage.textContent = "Successfully rated!";
+                        ratingMessage.style.display = 'flex';
                         document.querySelector(`.star-wrapper[data-location="${locationId}"]`).style.display = 'none';
                     } else {
                         ratingMessage.textContent = "Error: Unable to rate. (" + data.error + ")";
+                        ratingMessage.style.display = 'flex';
+                        document.querySelector(`.star-wrapper[data-location="${locationId}"]`).style.display = 'none';
                     }
                 });
             });

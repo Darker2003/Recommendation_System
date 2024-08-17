@@ -8,7 +8,6 @@ from django.urls import reverse
 from django.db import models
 from django.conf import settings
     
-# Create your models here.
 class locationdatabase(models.Model):
     place_id = models.BigAutoField(primary_key=True)
     place_name = models.CharField(max_length=100, unique=True)
@@ -94,6 +93,11 @@ class userlocationlogging(models.Model):
     clicked_date = models.DateTimeField(auto_now_add=True)
     last_viewed = models.DateTimeField(auto_now=True)
     
+class userratinglogging(models.Model):
+    place_slug = models.ForeignKey('locationdatabase', on_delete=models.CASCADE)
+    user = models.ForeignKey('userdatabase', on_delete=models.CASCADE)
+    ratings = models.IntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    
 class usersearchlogging(models.Model):
     log_id = models.BigAutoField(primary_key=True)
     username = models.ForeignKey('userdatabase', on_delete=models.CASCADE, null=True)
@@ -114,11 +118,6 @@ class commentreview(models.Model):
     
     def __str__(self):
         return f"{self.comment_id}.{self.user}"
-    
-class userratinglogging(models.Model):
-    place_slug = models.ForeignKey('locationdatabase', on_delete=models.CASCADE)
-    user = models.ForeignKey('userdatabase', on_delete=models.CASCADE)
-    ratings = models.IntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(5)])
 
 class usertagweight(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -135,3 +134,16 @@ class usertagweight(models.Model):
         self.weight *= decay_factor
         self.weight = self.weight + adjustment
         self.save()
+        
+class weatherdatabase(models.Model):
+    location_id = models.CharField(max_length=50)
+    date = models.DateField()
+    weather_text = models.CharField(max_length=255)
+    min_temperature = models.FloatField(default=0)
+    max_temperature = models.FloatField(default=0)
+    min_humidity = models.FloatField(default=0)
+    max_humidity = models.FloatField(default=0)
+    avg_humidity = models.FloatField(default=0)
+
+    def __str__(self):
+        return f"{self.location_id} - {self.date}: {self.weather_text}"

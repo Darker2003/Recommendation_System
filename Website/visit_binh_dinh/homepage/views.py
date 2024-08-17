@@ -1,15 +1,13 @@
 from datetime import timedelta
-from urllib.parse import urlencode, parse_qs, urlparse, urlunparse
+from urllib.parse import urlencode
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import IntegrityError, transaction
 from django.db.models import (
-    Avg, Case, Count, F, FloatField, IntegerField, OuterRef, Subquery, Value, When
+    Avg, Case, FloatField, IntegerField, Value, When
 )
-from django.db.models.functions import Coalesce
+
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -19,7 +17,7 @@ from django.views.decorators.http import require_POST
 from django.core.serializers import serialize
 
 from .forms import LoginForm, SignupForm, ProfileForm, SearchForm, FilterForm, SALARY_CHOICE
-from .models import locationdatabase, userdatabase, usersearchlogging, userlocationlogging, userratinglogging, usertagweight
+from .models import locationdatabase, userdatabase, usersearchlogging, userlocationlogging, userratinglogging, usertagweight, weatherdatabase
 
 import ast
 import json 
@@ -32,6 +30,17 @@ import shutil
 import uuid
 
 from . import Get_tags_weight_copilot
+
+def check_approve_weather(weather_input, location_slug):
+    location = locationdatabase.objects.filter(slug=location_slug).first()
+    weather_list = location.suitable_weather
+    
+    print(weather_input, weather_list)
+    
+    if "any" in weather_list:
+        return True
+    
+    return modify_weather_text(weather_input) in weather_list
 
 def find_max_salary_choice(salary_choices):
     numbers = [int(choice[0]) for choice in salary_choices]
@@ -78,48 +87,123 @@ def check_weather_basic():
     current_month = current_date.month
     return 4 <= current_month <= 9
 
-def check_weather_api(date=''):
-    api_key = ""
+def fetch_weather_data():
+    api_key = "DlGC49EZHwwBd6yuPPh3aMLedE5h9BT5"
     location_id = "171"
+    weather_url = f"http://dataservice.accuweather.com/forecasts/v1/daily/5day/{location_id}?apikey={api_key}&details=true"
 
-    weather_url = f"https://dataservice.accuweather.com/currentconditions/v1/{location_id}/{date}?apikey={api_key}"
     try:
         response = requests.get(weather_url, timeout=3)
         response.raise_for_status()
         result = response.json()
 
         if result:
-            weather_text = result[0]["WeatherText"]
-            if "sunny" in weather_text.lower():
-                return f"Good weather! It's {weather_text}"
-            else:
-                return f"We would not recommend going in this bad weather. It's {weather_text}"
-        else:
-            return "Service couldn't respond."
-    except requests.RequestException:
-        return "Service couldn't respond." if not check_weather_basic() else "Good weather!"
+            for day in result["DailyForecasts"]:
+                weather_text = day["Day"]["IconPhrase"]
+                date = datetime.datetime.strptime(day["Date"], "%Y-%m-%dT%H:%M:%S%z").date()
+                min_temp = day["Temperature"]["Minimum"]["Value"]
+                max_temp = day["Temperature"]["Maximum"]["Value"]
+                min_humidity = day["Day"]["RelativeHumidity"]["Minimum"]
+                max_humidity = day["Day"]["RelativeHumidity"]["Maximum"]
+                avg_humidity = day["Day"]["RelativeHumidity"]["Average"]
 
+                weatherdatabase.objects.update_or_create(
+                    location_id=location_id,
+                    date=date,
+                    defaults={
+                        'weather_text': weather_text,
+                        'min_temperature': min_temp,
+                        'max_temperature': max_temp,
+                        'min_humidity': min_humidity,
+                        'max_humidity': max_humidity,
+                        'avg_humidity': avg_humidity,
+                    },
+                )
+            return True
+        else:
+            return False
+    except requests.RequestException:
+        return False
+
+def check_weather_api(date=''):
+    location_id = "171"
+    date = datetime.datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.datetime.now().date()
+
+    weather = weatherdatabase.objects.filter(location_id=location_id, date=date).first()
+
+    if not weather:
+        last_entry = weatherdatabase.objects.filter(location_id=location_id).order_by('date').last()
+        
+        if not last_entry or last_entry.date < datetime.datetime.now().date() + timedelta(days=5):
+            if not fetch_weather_data():
+                return "Service couldn't respond."
+
+            weather = weatherdatabase.objects.filter(location_id=location_id, date=date).first()
+            if not weather:
+                return "Service couldn't respond."
+    
+    weather_text = weather.weather_text
+    min_temp = round((weather.min_temperature - 32) * (5/9), 1)
+    max_temp = round((weather.max_temperature - 32) * (5/9), 1)
+    avg_humidity = weather.avg_humidity
+    min_humidity = weather.min_humidity
+    max_humidity = weather.max_humidity
+    
+    weather_info = f"Weather: {weather_text}, Min Temp: {min_temp}°C, Max Temp: {max_temp}°C, Lowest Humidity: {min_humidity}%, Highest Humidity: {max_humidity}%, Average Humidity: {avg_humidity}%"
+    weather_tagline = categorize_weather(weather_text)
+
+    return weather_text, weather_tagline, weather_info
+
+def modify_weather_text(weather_text):
+    weather_text = weather_text.lower()
+    
+    sunny_keywords = ['sunny', 'clear', 'mostly sunny', 'partly cloudy']
+    rain_keywords = ['rain', 'showers', 'thunderstorm', 'drizzle', 'light rain']
+    snow_keywords = ['snow', 'sleet', 'hail', 'wintry mix']
+    cloudy_keywords = ['cloudy', 'overcast', 'mostly cloudy', 'partly cloudy']
+    wind_keywords = ['wind', 'breezy', 'gusty']
+
+    if any(keyword in weather_text for keyword in sunny_keywords):
+        return 'sunny'
+    elif any(keyword in weather_text for keyword in rain_keywords):
+        return 'rain'
+    elif any(keyword in weather_text for keyword in snow_keywords):
+        return 'snow'
+    elif any(keyword in weather_text for keyword in cloudy_keywords):
+        return 'cloudy'
+    elif any(keyword in weather_text for keyword in wind_keywords):
+        return 'wind'
+    else:
+        return 'other'
+    
 def categorize_weather(weather_text):
     if "sunny" in weather_text.lower():
-        return "sunny"
+        return "Perfect day to enjoy the outdoors!"
     elif "rain" in weather_text.lower():
-        return "rainy"
+        return "Better bring an umbrella."
     elif "snow" in weather_text.lower():
-        return "snowy"
-    elif "cloud" in weather_text.lower():
-        return "cloudy"
+        return "Get ready to build a snowman!"
+    elif "cloudy" in weather_text.lower():
+        return "The sky is overcast, but it could still be a good day for a walk."
     elif "wind" in weather_text.lower():
-        return "windy"
+        return "Hold on to your hat!"
     else:
-        return "other"
+        return "Current weather is wild. Prepare for anything!"
 
 def calculate_average_rating(place_slug):
     try:
         average_rating = userratinglogging.objects.filter(place_slug__slug=place_slug).aggregate(Avg('ratings'))['ratings__avg']
-        return average_rating or 0
+        return round(average_rating, 1) or 0
     except ObjectDoesNotExist:
         return None
 
+def calculate_total_rating(place_slug):
+    try:
+        total_rating = len(userratinglogging.objects.filter(place_slug__slug=place_slug))
+        return total_rating
+    except ObjectDoesNotExist:
+        return None
+    
 def parse_tags(tagslist):
     return [tag.upper().replace(" ", "_") for tag in ast.literal_eval(tagslist[0])]
 
@@ -277,8 +361,6 @@ def homepage(request, page: int = 1):
         'sort_order': sort_order,
         'tag_search': tagslist,
     })
-    current_weather = check_weather_api(date=date_input)
-
     location_list = locationdatabase.objects.all()
     
     if search_input:
@@ -292,19 +374,22 @@ def homepage(request, page: int = 1):
         for tag in tags:
             location_list = location_list.filter(tags__icontains=tag)
 
-    current_weather_category = categorize_weather(current_weather)
-    location_list = annotate_weather_priority(location_list, current_weather_category)
+    current_weather, weather_tagline, weather_info = check_weather_api(date=date_input)
+    
+    location_list = annotate_weather_priority(location_list, current_weather)
     location_list = sort_locations(location_list, sort_rating, sort_order, request.user)
     paginated_list = paginate_location_list(location_list, page, view_amount)
 
     for location in paginated_list:
         location.average_rating = calculate_average_rating(location.slug)
+        location.total_rating = calculate_total_rating(location.slug)
+        location.weather_approve = check_approve_weather(current_weather, location.slug)
 
     context.update({
         'locationlist': paginated_list,
         'details': range(1, math.ceil(len(location_list) / view_amount) + 1),
         "filterform": form,
-        "weather": current_weather,
+        "weather": weather_tagline + " " + weather_info,
         'request': request,
     })
 
@@ -320,6 +405,7 @@ def search_request(request):
             question = form.cleaned_data['search_input']
             sort_mode = form.cleaned_data['sort_rating']
             sort_order = [True if form.cleaned_data['sort_order'] == '0' else False][0]
+            current_weather, weather_tagline, weather_info = check_weather_api()
             print(question, sort_mode, sort_order)
             
             user = request.user if request.user.is_authenticated else None
@@ -340,23 +426,24 @@ def search_request(request):
                     unprocessed_logs = usersearchlogging.objects.filter(username=user, processed=False).order_by('-search_date')[0]
 
                 if unprocessed_logs:
-                    print(unprocessed_logs)
                     Get_tags_weight_copilot.history_weights(ast.literal_eval(unprocessed_logs.result_query), 0.1, weights=user.weights_file)
                     unprocessed_logs.processed = True
                     unprocessed_logs.save()
             except Exception as e:
                 print('Unexpected error.')            
             
-            fetch_list = get_locations_by_similarity(data, weights_file, sort_order)
+            fetch_list = get_locations_by_similarity(data, weights_file, not sort_order)
             if not fetch_list:
                 context["search_logging"] = "Error: Unable to find locations based on question."
                 return render(request, 'index.html', context)
 
             log_search_result(request, question, data)
             context["search_logging"] = "Success! Please scroll down for your result."
-            
+
             for location in fetch_list:
                 location.average_rating = calculate_average_rating(location.slug)
+                location.total_rating = calculate_total_rating(location.slug)
+                location.weather_approve = check_approve_weather(current_weather, location.slug)
         
             if sort_mode == 'rating':
                 fetch_list.sort(key=lambda x: x.average_rating, reverse=sort_order)
@@ -366,7 +453,7 @@ def search_request(request):
             context.update({
                 "locationlist": fetch_list,
                 "locationlist_json": serialize('json', fetch_list),
-                "weather": check_weather_api(),
+                "weather": weather_tagline + " " + weather_info,
                 "question_tags": data,
                 "show_rating": True
             })
@@ -418,6 +505,21 @@ def signup(request):
 def profile(request):
     context = {
         'profileform': ProfileForm,
+        'lang': load_language_file('homepage/lang/en_US/profile.json')
+    }
+
+    user = request.user
+
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            return redirect('homepage')  # Redirect to the homepage or any other page after successful update
+    else:
+        form = ProfileForm(instance=user)
+
+    context = {
+        'profileform': form,
         'lang': load_language_file('homepage/lang/en_US/profile.json')
     }
     return render(request, 'profile.html', context)
@@ -593,7 +695,7 @@ def rate_result(request):
                     rating=rating, destination_name=location.place_name, question_tags=question_tags,
                     weights=weights_file
                 )
-                Get_tags_weight_copilot.compare_and_print_differences(weights_file)
+                # Get_tags_weight_copilot.compare_and_print_differences(weights_file)
                 return JsonResponse({"success": True})
             except Exception as e:
                 return JsonResponse({"success": False, "error": str(e)})

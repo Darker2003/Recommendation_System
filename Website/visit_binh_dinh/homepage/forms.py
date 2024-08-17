@@ -187,7 +187,7 @@ class SignupForm(forms.Form):
 
         return cleaned_data
 
-class ProfileForm(forms.Form):
+class ProfileForm(UserChangeForm):
     profile_email = forms.EmailField(
         required=True, widget=forms.TextInput(attrs={"placeholder": "Your email here."})
     )

@@ -170,8 +170,8 @@ def customize_weights(rating, destination_name, question_tags, weights = 'homepa
 
     customize_question_vector = np.where(question_vector == 1, question_vector * ((rating + 1)/5), question_vector)
     weights_vector = np.load(weights)
-    index = destinations.index[destinations['name'] == destination_name].tolist()
-
+    index = destinations.index[destinations['name'] == destination_name].tolist()[0] - 1
+    print('index: ',index)
     weights_vector[index] = np.clip(np.where(customize_question_vector != 0,
                                              customize_question_vector * weights_vector[index],
                                              weights_vector[index]),

@@ -18,5 +18,5 @@ urlpatterns = [
     path('place/<slug:slug>/rate/', views.rate_location, name='rate_location'),
     path('search/', views.search_request, name='search'),
     path('filter/', views.filter_locations, name='filter_locations'),
-    path('rate/', views.rate_result, name='rate_result')
+    path('rate/', views.rate_result, name='rate_result'),
 ]
